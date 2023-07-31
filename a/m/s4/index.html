@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WDBC Menu</title>
+    <style>
+        body {
+            background-color: #222;
+            margin: 0; padding: 0;
+        }
+        #menu { margin: 0; padding: 0; }
+        #menuframe {
+            transition: all 0.5s fade-in fade-out;
+        }
+    </style>
+</head>
+<body>
+<div
+  id="menu"
+  hx-get="iframe.html"
+  hx-trigger="load, every 60s"
+  hx-swap="innerHTML settle:3s transition:true"
+>WDBC</div>
+<script src="https://unpkg.com/htmx.org@1.9.4" integrity="sha384-zUfuhFKKZCbHTY6aRR46gxiqszMk5tcHjsVFxnUo8VMus4kHGVdIYVbOYYNlKmHV" crossorigin="anonymous"></script>
+</body>
+</html>
