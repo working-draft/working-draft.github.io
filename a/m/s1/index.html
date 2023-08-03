@@ -1,27 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WDBC Menu</title>
     <style>
-        body {
-            background-color: #222;
-            margin: 0; padding: 0;
-        }
-        #menu { margin: 0; padding: 0; }
-        #menuframe {
-            transition: all 0.5s fade-in fade-out;
-        }
+      body {
+        background-color: black;
+        margin: 0;
+        padding: 0;
+      }
+      #menu {
+        margin: 0;
+        padding: 0;
+      }
+      #menuframe {
+        transition: all 0.5s fade-in fade-out;
+      }
     </style>
-</head>
-<body>
-<div
-  id="menu"
-  hx-get="iframe.html"
-  hx-trigger="load, every 60s"
-  hx-swap="innerHTML settle:3s transition:true"
->WDBC</div>
-<script src="https://unpkg.com/htmx.org@1.9.4" integrity="sha384-zUfuhFKKZCbHTY6aRR46gxiqszMk5tcHjsVFxnUo8VMus4kHGVdIYVbOYYNlKmHV" crossorigin="anonymous"></script>
+  </head>
+<body _="on load call delayed_reboot()">
+<div id="menu">WDBC FTW</div>
+<script src="https://unpkg.com/hyperscript.org@0.9.9"></script>
+
+<script>
+  function delayed_reboot() {
+    // reload the page once every 12h
+    setTimeout(() => window.location.reload(true), 43200000);
+  }
+
+  function what_page() {
+    let loc = window.location.toString();
+    let pg = loc.slice(-2, -1);
+    if (pg > 2) {
+      pg -= 2;  // only have 2 pages now
+    }
+    return pg;
+  }
+</script>
+
+<script type="text/hyperscript">
+  init
+    set $last_local_update to null
+    set $last_slides_id to null
+
+    repeat forever
+      call check_for_update()
+      -- log "Current id is ", $last_slides_id, " and update is ", $last_local_update
+      wait 180s
+      log "."
+    end
+  end
+
+  def slides_status()
+    fetch https://script.google.com/macros/s/AKfycbzwgbUWRm0XmxJ6rrnzABgbsLf6eeFc3yCMpq-Pzzc_DNA1nrIFPNh4BpMc5LTMRCEY/exec as json
+    then return the result as Object
+  end
+
+  def do_update(sid)
+  -- fetch `iframe.html?id=${sid}` then put the result into #menu
+    call what_page()
+    log "updating iframe at ", Date().toString(), "to page ", result
+    put `<iframe id="menuframe" src="https://docs.google.com/presentation/d/${sid}/embed?start=false&loop=false&delayms=3000&rm=minimal&slide=${result}" frameborder="0" width="1920" height="1080" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true" ></iframe>` into #menu
+    set $last_local_update to Date.now()
+    set $last_slides_id to sid
+  end
+
+  def check_for_update()
+    -- determine whether we should update our iframe...
+    get the slides_status()
+    -- log result.id
+    -- log result.up
+
+    if $last_slides_id == null or $last_local_update == null
+      -- if this the first time, these will be null
+      -- log "first time... doing update"
+      call do_update(result.id)
+      exit
+    end
+
+    if result.id != $last_slides_id
+      -- log "ID's don't match..."
+      call do_update(result.id)
+      exit
+    end
+
+    if Date.parse(result.up) > $last_local_update
+      -- log Date.parse(result.up), "is newer than", $last_local_update
+      call do_update(result.id)
+      exit
+    end
+    -- fall through; don't update:
+    -- log "Not updating."
+  end
+
+</script>
 </body>
 </html>
