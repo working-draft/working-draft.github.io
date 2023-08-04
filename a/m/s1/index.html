@@ -76,22 +76,24 @@
       -- if this the first time, these will be null
       -- log "first time... doing update"
       call do_update(result.id)
-      exit
+      return result
     end
 
     if result.id != $last_slides_id
       -- log "ID's don't match..."
       call do_update(result.id)
-      exit
+      return result
     end
 
     if Date.parse(result.up) > $last_local_update
       -- log Date.parse(result.up), "is newer than", $last_local_update
       call do_update(result.id)
-      exit
+      return result
     end
     -- fall through; don't update:
     -- log "Not updating."
+    -- return the status object
+    return result
   end
 
 </script>
