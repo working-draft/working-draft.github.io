@@ -26,14 +26,24 @@
 <script>
   function delayed_reboot() {
     // reload the page once every 12h
-    setTimeout(() => window.location.reload(true), 43200000);
+    // turned off 'till I can make the menu bar go away
+    return;
+    //setTimeout(() => window.location.reload(true), 43200000);
   }
 
   function what_page() {
     let loc = window.location.toString();
     let pg = loc.slice(-2, -1);
-    if (pg > 2) {
-      pg -= 2;  // only have 2 pages now
+    // these come in as a, b, c, d... which slide page to do?
+    switch (pg) {
+      case "a":
+        return 1;
+      case "b":
+        return 2;
+      case "c":
+        return 1;
+      case "d":
+        return 2;
     }
     return pg;
   }
