@@ -52,17 +52,21 @@
     const date = new Date();
     const hour = date.getHours();
     switch (date.getDay()) {
-      // this is all one hour over in both directions
+      // hours are now:
+      // Su: 12p -> 7p
+      // Mo -> Th: 3p -> 10p
+      // Fr, Sa: 12p -> 11p
+      // ... shoot for allow updates 2h before and 1h after
       case 0:  // Sunday
         // hours noon to 7p; are we close? then allow updates
-        return hour >= 11 && hour < 8;
+        return hour >= 10 && hour < 8;
       case 5:  // Friday hours noon to 11p
-        return hour >= 11 && hour < 24;
+        return hour >= 10 && hour < 24;
       case 6:  // Saturday noon to 11p
-        return hour >= 11 && hour < 24;
+        return hour >= 10 && hour < 24;
       default:
-        // Tues through Thurs open 3p close 10p
-        return hour >= 14 && hour < 23;
+        // Mon through Thurs open 3p close 10p
+        return hour >= 13 && hour < 23;
     }
   }
 </script>
@@ -74,37 +78,33 @@
     set $last_slides_id to null
 
     repeat forever
-      call check_for_update()
-      -- log "Current id is ", $last_slides_id, " and update is ", $last_local_update
-      -- there's a timeout setting in result.ck but I don't know how to make the expression
-      -- for the wait command; it only seems to take its own literals, not variables or strings
-      wait 180s
+      call check_for_update() then put it into status
+      -- log "status ob is ", status
+      -- log "status.ck is ", status.ck
+      if Number.isInteger(status.ck)
+        set timeout to status.ck
+      else
+        set timeout to 300  -- default to 5m
+      end
+      wait timeout s
       log "."
     end
   end
 
   def slides_status()
-    fetch https://script.google.com/macros/s/AKfycbwPLZ1ii2rhEj5nb931hCRh02s_KvLh_CIZhnEA3vXPK07o5Dukdk-NsRcCxDH2xOaw/exec as json
+    -- Status http deployment version 26
+    fetch https://script.google.com/macros/s/AKfycbwPuTDeZsNYxvdnHH3AH_HVyBho8LDLWmfvDd477agy3x-ILYCAhJ4j9an3QNk7e2Xe/exec as json
     then return the result as Object
   end
 
   -- do the actual updating of the iframe
   def do_update(status)
-    call what_proj_am_i()
-    if result == 'a'
-      set pg to status.pa
-    end
-    if result == 'b'
-      set pg to status.pb
-    end
-    if result == 'c'
-      set pg to status.pc
-    end
-    if result == 'd'
-      set pg to status.pd
-    end
-    log Date().toString(), "updating iframe on projector ", result, " to slide ", pg
-    put `<iframe id="menuframe" src="https://docs.google.com/presentation/d/${status.id}/embed?start=false&loop=true&delayms=3000&rm=minimal&slide=${pg}" frameborder="0" width="1920" height="1080" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true" ></iframe>` into #menu
+    call what_proj_am_i() then put it into proj
+    set key to "p" + proj + "_url"
+    set url to status[key]
+    -- log "url is ", url
+    log Date().toString(), "updating iframe on projector ", proj, " to url ", url
+    put `<iframe id="menuframe" src="${url}" frameborder="0" width="1920" height="1080" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>` into #menu
     set $last_local_update to Date.now()
     set $last_slides_id to status.id
   end
@@ -112,7 +112,7 @@
   -- determine whether we should update our iframe...
   def check_for_update()
     get the slides_status() then put it into status
-    -- log status
+    -- log "in check_for_update() got status: ", status
 
     -- check to see if we should reboot
     call check_for_reboot($script_boot_time, status.force_reload)
@@ -121,13 +121,13 @@
     if $last_slides_id == null or $last_local_update == null
       log "first time... doing update"
       call do_update(status)
-      return result
+      return status
     end
 
     -- from now, only check if it's the right time of day
     if time_for_updates() == false
       log "Not updating because we are off hours"
-      exit
+      return status
     end
 
     if status.id != $last_slides_id
@@ -136,8 +136,8 @@
       return result
     end
 
-    if Date.parse(status.up) > $last_local_update
-      -- log Date.parse(status.up), "is newer than", $last_local_update
+    if status.up > $last_local_update
+      -- log status.up, "is newer than", $last_local_update
       call do_update(status)
       return result
     end
@@ -145,7 +145,6 @@
     -- log "Not updating."
     return status
   end
-
 </script>
 </body>
 </html>
