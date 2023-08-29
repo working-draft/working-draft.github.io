@@ -21,7 +21,7 @@
     </style>
   </head>
 <body>
-<div id="menu">v.3</div>
+<div id="menu">v.3.1</div>
 <script src="https://unpkg.com/hyperscript.org@0.9.9"></script>
 
 <script>
@@ -127,6 +127,7 @@
     put `<iframe id="menuframe" src="${url}" frameborder="0" width="1920" height="1080" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>` into #menu
     set $last_local_update to Date.now()
     set $last_slides_id to status.id
+    return status
   end
 
   -- determine whether we should update our iframe...
@@ -137,7 +138,7 @@
     end
 
     -- check to see if we should reboot
-    call check_for_reboot($script_boot_time, status.force_reload)
+    -- call check_for_reboot($script_boot_time, status.force_reload)
 
     -- if this the first time, these will be null
     if $last_slides_id == null or $last_local_update == null
@@ -148,11 +149,14 @@
 
     -- from now, only check if it's the right time of day
     -- but not if debug mode is flagged
-    if not $debug_mode
+    if $debug_mode
+      log "not checking for hours because we are in debug mode"
+    else
       if not time_for_updates()
         log "Not updating because we are off hours"
         return status
       end
+      -- otherwise, keep going...
     end
 
     if status.id != $last_slides_id
@@ -172,7 +176,7 @@
     end
     -- fall through; don't update:
     if $debug_mode
-      log "Not updating."
+      log "Not updating; no required conditions found."
     end
     return status
   end
