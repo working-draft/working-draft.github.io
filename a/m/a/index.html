@@ -11,17 +11,16 @@
         padding: 0;
       }
       #menu {
-        color: #555;
-        font-size: 10em;
-        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
       }
       #menuframe {
-        transition: all 1s fade-in fade-out;
+        transition: all 0.5s fade-in fade-out;
       }
     </style>
   </head>
 <body>
-<div id="menu">v.3.1</div>
+<div id="menu">WDBC FTW</div>
 <script src="https://unpkg.com/hyperscript.org@0.9.9"></script>
 
 <script>
@@ -45,13 +44,8 @@
   }
 
   function what_proj_am_i() {
-    try {
-      let loc = window.location.toString();
-      return loc.slice(-2, -1);
-    } catch (err) {
-      console.log(`Error determining what projector I am... '${err}'`);
-      return 'a';  // default to a; at least it's something valid
-    }
+    let loc = window.location.toString();
+    return loc.slice(-2, -1);
   }
 
   function time_for_updates() {
@@ -79,27 +73,18 @@
 
 <script type="text/hyperscript">
   init
-    set $debug_mode to false
     set $script_boot_time to Date.now()
     set $last_local_update to null
     set $last_slides_id to null
 
     repeat forever
       call check_for_update() then put it into status
-      if status.debug_mode != null
-        log `setting debug flag to ${status.debug_mode}`
-        set $debug_mode to status.debug_mode
-      end
-      if $debug_mode
-        log "status ob is ", status
-      end
+      -- log "status ob is ", status
+      -- log "status.ck is ", status.ck
       if Number.isInteger(status.ck)
         set timeout to status.ck
       else
         set timeout to 300  -- default to 5m
-      end
-      if $debug_mode
-        log `timeout is set to ${timeout}. waiting...`
       end
       wait timeout s
       log "."
@@ -107,7 +92,7 @@
   end
 
   def slides_status()
-    -- Status http deployment version 29 connected to menumanager v12
+    -- Status http deployment version 26 connected to menumanager v 8
     fetch https://script.google.com/macros/s/AKfycbwPuTDeZsNYxvdnHH3AH_HVyBho8LDLWmfvDd477agy3x-ILYCAhJ4j9an3QNk7e2Xe/exec as json
     then return the result as Object
   end
@@ -115,30 +100,22 @@
   -- do the actual updating of the iframe
   def do_update(status)
     call what_proj_am_i() then put it into proj
-    if $debug_mode
-      log `determined I am projector ${it}`
-    end
     set key to "p" + proj + "_url"
     set url to status[key]
-    if $debug_mode
-      log `iframe url will be set to: ${url}`
-    end
+    -- log "url is ", url
     log Date().toString(), "updating iframe on projector ", proj, " to url ", url
     put `<iframe id="menuframe" src="${url}" frameborder="0" width="1920" height="1080" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>` into #menu
     set $last_local_update to Date.now()
     set $last_slides_id to status.id
-    return status
   end
 
   -- determine whether we should update our iframe...
   def check_for_update()
     get the slides_status() then put it into status
-    if $debug_mode
-      log "in check_for_update() got status: ", status
-    end
+    -- log "in check_for_update() got status: ", status
 
     -- check to see if we should reboot
-    -- call check_for_reboot($script_boot_time, status.force_reload)
+    call check_for_reboot($script_boot_time, status.force_reload)
 
     -- if this the first time, these will be null
     if $last_slides_id == null or $last_local_update == null
@@ -148,36 +125,24 @@
     end
 
     -- from now, only check if it's the right time of day
-    -- but not if debug mode is flagged
-    if $debug_mode
-      log "not checking for hours because we are in debug mode"
-    else
-      if not time_for_updates()
-        log "Not updating because we are off hours"
-        return status
-      end
-      -- otherwise, keep going...
+    if time_for_updates() == false
+      log "Not updating because we are off hours"
+      return status
     end
 
     if status.id != $last_slides_id
-      if $debug_mode
-        log `slides ids don't match; status.id=${status.id} last_slides_id=${$last_slides_id}`
-      end
+      -- log "IDs don't match..."
       call do_update(status)
       return result
     end
 
     if status.up > $last_local_update
-      if $debug_mode
-        log status.up, "is newer than", $last_local_update
-      end
+      -- log status.up, "is newer than", $last_local_update
       call do_update(status)
       return result
     end
     -- fall through; don't update:
-    if $debug_mode
-      log "Not updating; no required conditions found."
-    end
+    -- log "Not updating."
     return status
   end
 </script>
