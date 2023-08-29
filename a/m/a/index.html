@@ -119,7 +119,7 @@ end
 def do_update(status)
   call what_proj_am_i() then put it into proj
   if $debug_mode
-    log `determined I am projector "${it}"`
+    log `determined I am projector "${proj}"`
   end
   set key to "p" + proj + "_url"
   set url to status[key]
