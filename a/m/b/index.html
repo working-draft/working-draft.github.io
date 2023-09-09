@@ -1,1 +1,188 @@
-../a/index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WDBC Menu</title>
+    <style>
+      body {
+        background-color: black;
+        margin: 0;
+        padding: 0;
+      }
+      #menu {
+        color: #555;
+        font-size: 6em;
+        font-family: sans-serif;
+      }
+      #menuframe {
+        transition: all 1s fade-in fade-out;
+      }
+    </style>
+  </head>
+<body>
+<div id="menu">v.3.2</div>
+<script src="https://unpkg.com/hyperscript.org@0.9.11"></script>
+
+<script>
+  function check_for_reboot(boot_time, force=false) {
+    // turned off 'till I can make the menu bar go away
+    return false;
+    // if (force == true) {
+    //   window.location.reload(true);  // true is to ignore cache
+    // }
+    // // or, if it's in the right time window and we have been up
+    // // for at least 70m
+    // const seventy_minutes = 70 * 60 * 1000;  // in milliseconds
+    // const the_hour = new Date().getHours();
+    // if (
+    //   // will look btw 1am and 2am
+    //   (the_hour > 0 && the_hour < 2)
+    //   && (Date.now() - boot_time > seventy_minutes)
+    //   ) {
+    //     window.location.reload(true);  // true is to ignore cache
+    //   }
+  }
+
+  function what_proj_am_i() {
+    try {
+      let loc = window.location.toString();
+      return loc.slice(-2, -1);
+    } catch (err) {
+      console.log(`Error determining what projector I am... '${err}'`);
+      return 'a';  // default to a; at least it's something valid
+    }
+  }
+
+  function time_for_updates() {
+    const date = new Date();
+    const hour = date.getHours();
+    switch (date.getDay()) {
+      // hours are now:
+      // Su: 12p -> 7p
+      // Mo -> Th: 3p -> 10p
+      // Fr, Sa: 12p -> 11p
+      // ... shoot for allow updates 2h before and 1h after
+      case 0:  // Sunday
+        // hours noon to 7p; are we close? then allow updates
+        return hour >= 10 && hour < 8;
+      case 5:  // Friday hours noon to 11p
+        return hour >= 10 && hour < 24;
+      case 6:  // Saturday noon to 11p
+        return hour >= 10 && hour < 24;
+      default:
+        // Mon through Thurs open 3p close 10p
+        return hour >= 13 && hour < 23;
+    }
+  }
+</script>
+
+
+<script type="text/hyperscript">
+init
+  set $debug_mode to true  -- start this way to get boot messages
+  set $script_boot_time to Date.now()
+  set $last_local_update to null
+  set $last_slides_id to null
+
+  repeat forever
+    call check_for_update() then put it into status
+    if $debug_mode
+      console.table(status)
+    end
+    if Number.isInteger(status.ck)
+      set timeout to status.ck
+    else
+      set timeout to 300  -- default to 5m
+    end
+    if $debug_mode
+      log `timeout is set to ${timeout}. waiting...`
+    end
+    if status.debug_mode != null
+      if $debug_mode
+        log `setting debug flag to ${status.debug_mode}`
+      end
+      set $debug_mode to status.debug_mode
+    end
+    wait timeout s
+    log `[heartbeat; ${timeout}s interval]`
+  end
+end
+
+def slides_status()
+  -- Status http deployment version 31 connected to menumanager v16
+  fetch https://script.google.com/macros/s/AKfycbwPuTDeZsNYxvdnHH3AH_HVyBho8LDLWmfvDd477agy3x-ILYCAhJ4j9an3QNk7e2Xe/exec as json
+  then return the result as Object
+end
+
+-- do the actual updating of the iframe
+def do_update(status)
+  call what_proj_am_i() then put it into proj
+  if $debug_mode
+    log `determined I am projector "${proj}"`
+  end
+  set key to "p" + proj + "_url"
+  set url to status[key]
+  if $debug_mode
+    log `iframe url will be set to: ${url}`
+  end
+  put `<iframe id="menuframe" src="${url}" frameborder="0" width="1920" height="1080" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>` into #menu
+  set $last_local_update to Date.now()
+  set $last_slides_id to status.id
+  return status
+end
+
+-- determine whether we should update our iframe...
+def check_for_update()
+  get the slides_status() then put it into status
+  if $debug_mode
+    log "in check_for_update() got status: ", status
+  end
+
+  -- check to see if we should reboot
+  -- call check_for_reboot($script_boot_time, status.force_reload)
+
+  -- if this the first time, these will be null
+  if $last_slides_id == null or $last_local_update == null
+    if $debug_mode
+      log "first time... doing update"
+    end
+    call do_update(status)
+    return status
+  end
+
+  -- from now, only check if it's the right time of day
+  -- but not if debug mode is flagged
+  if $debug_mode
+    log "not checking for hours because we are in debug mode"
+  else
+    if not time_for_updates()
+      log "Not updating because we are off hours"
+      return status
+    end
+    -- otherwise, keep going...
+  end
+
+  if status.id != $last_slides_id
+    if $debug_mode
+      log `slides ids don't match; status.id=${status.id} last_slides_id=${$last_slides_id}`
+    end
+    call do_update(status)
+    return result
+  end
+
+  if status.up > $last_local_update
+    if $debug_mode
+      log status.up, "is newer than", $last_local_update
+    end
+    call do_update(status)
+    return result
+  end
+  -- fall through; don't update:
+  if $debug_mode
+    log "Not updating; no required conditions found."
+  end
+  return status
+end</script>
+</body>
+</html>
